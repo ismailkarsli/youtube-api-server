@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
+import { cache } from "../index";
 import { getPlaylistUnofficial } from "../controllers/youtube";
 
-const home = async (req: Request, res: Response) => {
+const playlist = async (req: Request, res: Response) => {
   const playlistId = String(req.query.id);
   if (!playlistId || playlistId.length < 30 || playlistId.length > 50) {
     res.status(400);
@@ -9,14 +10,20 @@ const home = async (req: Request, res: Response) => {
   }
 
   let results;
-  try {
-    results = await getPlaylistUnofficial(playlistId);
-  } catch (e) {
-    res.status(500);
-    return res.send("error: request to youtube failed");
+  let cachedResults = cache.get(`playlist_${playlistId}`);
+  if (cachedResults) {
+    results = cachedResults;
+  } else {
+    try {
+      results = await getPlaylistUnofficial(playlistId);
+    } catch (e) {
+      res.status(500);
+      return res.send("error: request to youtube failed");
+    }
+    cache.set(`playlist_${playlistId}`, results);
   }
 
-  res.send(results);
+  res.json(results);
 };
 
-export default home;
+export default playlist;

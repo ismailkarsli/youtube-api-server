@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { cache } from "../index";
 import { getMusicListsUnofficial } from "../controllers/youtube";
 
-const search = async (req: Request, res: Response) => {
+const trends = async (req: Request, res: Response) => {
   const countryCode = String(req.query.countryCode).toLowerCase();
   if (!countryCode || countryCode.length !== 2) {
     res.status(400);
@@ -26,4 +26,4 @@ const search = async (req: Request, res: Response) => {
   res.json(musicLists);
 };
 
-export default search;
+export default trends;
