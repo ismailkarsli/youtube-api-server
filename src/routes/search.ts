@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { cache } from "..";
 import {
   SearchItem,
   searchOfficial,
@@ -13,10 +14,16 @@ const search = async (req: Request, res: Response) => {
   const searchQuery = String(req.query.query).trim().toLowerCase();
 
   let results: SearchItem[];
-  try {
-    results = await searchUnofficial(searchQuery);
-  } catch {
-    results = await searchOfficial(searchQuery);
+  let cachedResults: any = cache.get(`search_${searchQuery}`);
+  if (cachedResults) {
+    results = cachedResults;
+  } else {
+    try {
+      results = await searchUnofficial(searchQuery);
+    } catch {
+      results = await searchOfficial(searchQuery);
+    }
+    cache.set(`search_${searchQuery}`, results);
   }
 
   res.json(results);

@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import fs from "fs";
-import { getInfoUnofficial } from "../controllers/youtube";
-const ffmpegPath = require("ffmpeg-static");
-const { tmpdir } = require("os");
-const { join } = require("path");
-const { spawn } = require("child_process");
+import { getInfoUnofficial, VideoItem } from "../controllers/youtube";
+import ffmpegPath from "ffmpeg-static";
+import { tmpdir } from "os";
+import { join } from "path";
+import { spawn } from "child_process";
+import { cache } from "../index";
 
 const download = async (req: Request, res: Response) => {
   const videoId = String(req.query.id);
@@ -13,12 +14,18 @@ const download = async (req: Request, res: Response) => {
     return res.send("error: invalid id");
   }
 
-  let videoInfo;
-  try {
-    videoInfo = await getInfoUnofficial(videoId);
-  } catch (e) {
-    res.status(500);
-    return res.send(e.toString());
+  let videoInfo: VideoItem;
+  let cachedVideoInfo: any = cache.get(`video_${videoId}`);
+  if (cachedVideoInfo) {
+    videoInfo = cachedVideoInfo;
+  } else {
+    try {
+      videoInfo = await getInfoUnofficial(videoId);
+      cache.set(`video_${videoId}`, videoInfo);
+    } catch (e) {
+      res.status(500);
+      return res.send(e.toString());
+    }
   }
 
   const highestAudio = videoInfo.formats.highestAudio;

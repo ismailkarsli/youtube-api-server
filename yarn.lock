@@ -80,6 +80,11 @@
     "@types/qs" "*"
     "@types/serve-static" "*"
 
+"@types/ffmpeg-static@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@types/ffmpeg-static/-/ffmpeg-static-3.0.0.tgz#723c2349da9e095cfa0ee6e6c1d5d4c87bb76933"
+  integrity sha512-JTwV8fFQYUgp8VLUKLd8zHfhFOoTTszMlofnWINAZYWSd/iR2ZZHJsWanUhBG4+c8QPfWE8P7t3nAjSxTNjevQ==
+
 "@types/http-cache-semantics@*":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@types/http-cache-semantics/-/http-cache-semantics-4.0.0.tgz#9140779736aa2655635ee756e2467d787cfe8a2a"
@@ -373,6 +378,11 @@ clone-response@^1.0.2:
   integrity sha1-0dyXOSAxTfZ/vrlCI7TuNQI56Ws=
   dependencies:
     mimic-response "^1.0.0"
+
+clone@2.x:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/clone/-/clone-2.1.2.tgz#1b7f4b9f591f1e8f83670401600345a02887435f"
+  integrity sha1-G39Ln1kfHo+DZwQBYANFoCiHQ18=
 
 color-convert@^2.0.1:
   version "2.0.1"
@@ -1097,6 +1107,13 @@ negotiator@0.6.2:
   version "0.6.2"
   resolved "https://registry.yarnpkg.com/negotiator/-/negotiator-0.6.2.tgz#feacf7ccf525a77ae9634436a64883ffeca346fb"
   integrity sha512-hZXc7K2e+PgeI1eDBe/10Ard4ekbfrrqG8Ep+8Jmf4JID2bNg7NvCPOZN+kfF574pFQI7mum2AUqDidoKqcTOw==
+
+node-cache@^5.1.2:
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/node-cache/-/node-cache-5.1.2.tgz#f264dc2ccad0a780e76253a694e9fd0ed19c398d"
+  integrity sha512-t1QzWwnk4sjLWaQAS8CHgOJ+RAfmHpxFWmc36IWTiWHQfs0w5JDMBS1b1ZxQteo0vVVuWJvIUKHDkkeK7vIGCg==
+  dependencies:
+    clone "2.x"
 
 nodemon@^2.0.7:
   version "2.0.7"

@@ -1,14 +1,27 @@
 import { Request, Response } from "express";
+import { cache } from "..";
 import { getMusicLists } from "../controllers/youtube";
 
 const search = async (req: Request, res: Response) => {
-  const countryCode = String(req.query.countryCode);
+  const countryCode = String(req.query.countryCode).toLowerCase();
   if (!countryCode || countryCode.length !== 2) {
     res.status(400);
     return res.send("error: no countryCode specified");
   }
 
-  const musicLists = await getMusicLists(countryCode);
+  let musicLists;
+  let cachedMusicLists = cache.get(`trends_${countryCode}`);
+  if (cachedMusicLists) {
+    musicLists = cachedMusicLists;
+  } else {
+    try {
+      musicLists = await getMusicLists(countryCode);
+    } catch (e) {
+      res.status(500);
+      return res.send(e.toString());
+    }
+    cache.set(`trends_${countryCode}`, musicLists);
+  }
 
   res.json(musicLists);
 };
