@@ -2,6 +2,14 @@ import axios, { AxiosInstance } from "axios";
 import ytsr from "ytsr";
 import ytdl, { videoFormat } from "ytdl-core";
 import { parseDate } from "chrono-node";
+import got from "got";
+import fs from "fs";
+import tmp from "tmp";
+import { chain } from "stream-chain";
+import { parser } from "stream-json";
+import { pick } from "stream-json/filters/Pick";
+import { ignore } from "stream-json/filters/Ignore";
+import { streamValues } from "stream-json/streamers/StreamValues";
 
 export interface SearchItem {
   id: number;
@@ -49,7 +57,7 @@ export const searchOfficial = async (
       part: "snippet",
       maxResults: 50,
       type: "video",
-      key: process.env.YOUTUBE_API_KEY,
+      key: process.env.YOUTUBE_API_KEY || null,
     },
   });
 
@@ -119,4 +127,101 @@ export const getInfoUnofficial = async (id: string): Promise<VideoItem> => {
     },
     formatsRaw: videoInfo.formats,
   };
+};
+
+export const getMusicLists = async (countryCode: string) => {
+  const webPageRaw = await got(
+    `https://www.youtube.com/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ?persist_gl=1&gl=${countryCode.toUpperCase()}&persist_hl=1&hl=${countryCode}`
+  );
+
+  const regex = /var ytInitialData = (.*);<\/script>/gm;
+  const results = regex.exec(webPageRaw.body);
+
+  if (!results?.length) throw new Error();
+  if (results.length >= 2 === false) throw new Error();
+
+  const data: any = await parseBigJson(results[1]);
+
+  return data.map((shelf: any) => {
+    let firstItem = shelf?.content?.horizontalListRenderer?.items[0];
+
+    if (firstItem?.compactStationRenderer) {
+      return {
+        title: shelf.title.runs[0].text,
+        type: "Playlists",
+        items: shelf.content.horizontalListRenderer.items.map((item: any) => {
+          let i = item.compactStationRenderer;
+          return {
+            id: i.navigationEndpoint.watchEndpoint.playlistId,
+            title: i.title.simpleText,
+            description: i.description.simpleText,
+            videoCount: i.videoCountText.runs[0].text,
+            thumbnail: i.thumbnail.thumbnails.reduce(
+              (prev: number, curr: number) => (prev > curr ? prev : curr)
+            ).url,
+          };
+        }),
+      };
+    } else if (firstItem?.gridVideoRenderer) {
+      return {
+        title: shelf.title.runs[0].text,
+        type: "Videos",
+        playlistId:
+          shelf.title.runs[0].navigationEndpoint.browseEndpoint.browseId,
+        items: shelf.content.horizontalListRenderer.items.map((item: any) => {
+          let i = item.gridVideoRenderer;
+          return {
+            id: i.videoId,
+            title: i.title?.simpleText,
+            thumbnail: `https://i.ytimg.com/vi/${i.videoId}/hqdefault.jpg`,
+            publishedAt: i.publishedTimeText?.simpleText,
+            viewsCount: i.shortViewCountText?.simpleText,
+            duration:
+              i.thumbnailOverlays[0].thumbnailOverlayTimeStatusRenderer.text
+                ?.simpleText,
+          };
+        }),
+      };
+    } else if (firstItem?.gridPlaylistRenderer) {
+      return {
+        title: shelf.title.runs[0].text,
+        type: "Playlists",
+        items: shelf.content.horizontalListRenderer.items.map((item: any) => {
+          const i = item.gridPlaylistRenderer;
+          return {
+            id: i.playlistId,
+            title: i.title.runs[0].text,
+            thumbnail: `https://i.ytimg.com/vi/${i.navigationEndpoint.watchEndpoint.videoId}/hqdefault.jpg`,
+            videoCount: i.videoCountText.runs[0].text,
+          };
+        }),
+      };
+    } else {
+      return null;
+    }
+  });
+};
+
+const parseBigJson = (rawJson: string) => {
+  return new Promise((resolve, reject) => {
+    const tempFile = tmp.fileSync({ postfix: ".json" }).name;
+    fs.writeFileSync(tempFile, rawJson);
+
+    const foundData: any = [];
+
+    const pipeline = chain([
+      fs.createReadStream(tempFile),
+      parser(),
+      pick({ filter: /shelfRenderer/i }),
+      ignore({ filter: /tracking/i }),
+      streamValues(),
+      (data: any) => {
+        foundData.push(data.value);
+        return data;
+      },
+    ]);
+
+    pipeline.output.on("end", () => resolve(foundData));
+    pipeline.output.on("error", (err: any) => reject(err));
+  });
 };
