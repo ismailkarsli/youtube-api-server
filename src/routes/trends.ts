@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
-import { cache } from "..";
-import { getMusicLists } from "../controllers/youtube";
+import { cache } from "../index";
+import { getMusicListsUnofficial } from "../controllers/youtube";
 
 const search = async (req: Request, res: Response) => {
   const countryCode = String(req.query.countryCode).toLowerCase();
   if (!countryCode || countryCode.length !== 2) {
     res.status(400);
-    return res.send("error: no countryCode specified");
+    return res.send("error: no countryCode specified or invalid");
   }
 
   let musicLists;
@@ -15,7 +15,7 @@ const search = async (req: Request, res: Response) => {
     musicLists = cachedMusicLists;
   } else {
     try {
-      musicLists = await getMusicLists(countryCode);
+      musicLists = await getMusicListsUnofficial(countryCode);
     } catch (e) {
       res.status(500);
       return res.send(e.toString());

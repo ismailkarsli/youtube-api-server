@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { cache } from "..";
+import { cache } from "../index";
 import {
   SearchItem,
   searchOfficial,

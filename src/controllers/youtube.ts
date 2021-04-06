@@ -1,15 +1,9 @@
 import axios, { AxiosInstance } from "axios";
 import ytsr from "ytsr";
+import ytpl from "ytpl";
 import ytdl, { videoFormat } from "ytdl-core";
 import { parseDate } from "chrono-node";
-import got from "got";
-import fs from "fs";
-import tmp from "tmp";
-import { chain } from "stream-chain";
-import { parser } from "stream-json";
-import { pick } from "stream-json/filters/Pick";
-import { ignore } from "stream-json/filters/Ignore";
-import { streamValues } from "stream-json/streamers/StreamValues";
+import pickDeepJson from "../utils/pickDeepJson";
 
 export interface SearchItem {
   id: number;
@@ -41,6 +35,22 @@ export interface VideoItem {
     lowestAudio: videoFormat;
   };
   formatsRaw: Array<videoFormat>;
+}
+
+export interface PlaylistItem {
+  id: string;
+  title: string;
+  index: number;
+  thumbnail: string | null;
+  duration: number | null;
+}
+
+export interface Playlist {
+  title: string;
+  videoCount: number;
+  thumbnail: string | null;
+  description: string | null;
+  items: PlaylistItem[];
 }
 
 const ytApiRequest: AxiosInstance = axios.create({
@@ -107,7 +117,6 @@ export const getInfoUnofficial = async (id: string): Promise<VideoItem> => {
     category: videoInfo.videoDetails.category,
     uploadDate: videoInfo.videoDetails.uploadDate,
     videoLength: videoInfo.videoDetails.lengthSeconds,
-    // @ts-ignore Property 'album' is missing in type 'Media'
     mediaInfo: videoInfo.videoDetails.media,
     formats: {
       highest: ytdl.chooseFormat(videoInfo.formats, { quality: "highest" }),
@@ -129,18 +138,19 @@ export const getInfoUnofficial = async (id: string): Promise<VideoItem> => {
   };
 };
 
-export const getMusicLists = async (countryCode: string) => {
-  const webPageRaw = await got(
+// TODO rewrite
+export const getMusicListsUnofficial = async (countryCode: string) => {
+  const webPageRaw = await axios(
     `https://www.youtube.com/channel/UC-9-kyTW8ZkZNDHQJ6FgpwQ?persist_gl=1&gl=${countryCode.toUpperCase()}&persist_hl=1&hl=${countryCode}`
   );
 
   const regex = /var ytInitialData = (.*);<\/script>/gm;
-  const results = regex.exec(webPageRaw.body);
+  const results = regex.exec(webPageRaw.data);
 
   if (!results?.length) throw new Error();
   if (results.length >= 2 === false) throw new Error();
 
-  const data: any = await parseBigJson(results[1]);
+  const data: any = await pickDeepJson(results[1], /shelfRenderer/);
 
   return data.map((shelf: any) => {
     let firstItem = shelf?.content?.horizontalListRenderer?.items[0];
@@ -202,26 +212,23 @@ export const getMusicLists = async (countryCode: string) => {
   });
 };
 
-const parseBigJson = (rawJson: string) => {
-  return new Promise((resolve, reject) => {
-    const tempFile = tmp.fileSync({ postfix: ".json" }).name;
-    fs.writeFileSync(tempFile, rawJson);
-
-    const foundData: any = [];
-
-    const pipeline = chain([
-      fs.createReadStream(tempFile),
-      parser(),
-      pick({ filter: /shelfRenderer/i }),
-      ignore({ filter: /tracking/i }),
-      streamValues(),
-      (data: any) => {
-        foundData.push(data.value);
-        return data;
-      },
-    ]);
-
-    pipeline.output.on("end", () => resolve(foundData));
-    pipeline.output.on("error", (err: any) => reject(err));
-  });
+export const getPlaylistUnofficial = async (id: string): Promise<Playlist> => {
+  const plist = await ytpl(id, { limit: Infinity });
+  return {
+    title: plist.title,
+    videoCount: plist.estimatedItemCount,
+    thumbnail: plist.bestThumbnail?.url,
+    description: plist.description,
+    items: plist.items.map(
+      (item): PlaylistItem => {
+        return {
+          id: item.id,
+          title: item.title,
+          index: item.index,
+          thumbnail: item.bestThumbnail.url,
+          duration: item.durationSec,
+        };
+      }
+    ),
+  };
 };
