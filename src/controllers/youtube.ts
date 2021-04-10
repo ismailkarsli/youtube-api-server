@@ -8,7 +8,7 @@ import pickDeepJson from "../utils/pickDeepJson";
 export interface SearchItem {
   id: number;
   title: string;
-  publishedAt: string;
+  publishedAt: string | null;
   thumbnail: string;
   channel: string;
 }
@@ -102,7 +102,7 @@ export const searchUnofficial = async (
     return {
       id: item.id,
       title: item.title,
-      publishedAt: String(parseDate(item.uploadedAt)),
+      publishedAt: item.uploadedAt ? String(parseDate(item.uploadedAt)) : null,
       thumbnail: `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
       channel: item.author.name,
     };

@@ -2,16 +2,16 @@
 
 ### /trends
 
-\* countryCode
+- countryCode\*
 
 ### /search
 
-\* query
+- query\*
 
 ### /download
 
-\* id
+- id\*
 
 ### /playlist
 
-\* id
+- id\*
