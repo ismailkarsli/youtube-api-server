@@ -14,7 +14,10 @@ const search = async (req: Request, res: Response) => {
   const searchQuery = String(req.query.query).trim().toLowerCase();
 
   let results: SearchItem[];
-  let cachedResults: any = cache.get(`search_${searchQuery}`);
+  let cachedResults: any =
+    process.env.NODE_ENV !== "production"
+      ? null
+      : cache.get(`search_${searchQuery}`);
   if (cachedResults) {
     results = cachedResults;
   } else {

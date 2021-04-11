@@ -4,19 +4,19 @@ import ytpl from "ytpl";
 import ytdl, { videoFormat } from "ytdl-core";
 import { parseDate } from "chrono-node";
 import pickDeepJson from "../utils/pickDeepJson";
+import parseTitle from "../utils/parseTitle";
 
 export interface SearchItem {
   id: number;
   title: string;
+  artist: string;
   publishedAt: string | null;
   thumbnail: string;
-  channel: string;
 }
 
 export interface MediaInfo {
   song?: string;
   artist?: string;
-  album?: string;
 }
 
 export interface VideoItem {
@@ -40,17 +40,15 @@ export interface VideoItem {
 export interface PlaylistItem {
   id: string;
   title: string;
-  index: number;
-  thumbnail: string | null;
-  duration: number | null;
+  artist: string;
+  artwork: string | null;
 }
 
 export interface Playlist {
-  title: string;
-  videoCount: number;
+  id: string;
+  name: string;
   thumbnail: string | null;
-  description: string | null;
-  items: PlaylistItem[];
+  songs: PlaylistItem[] | any;
 }
 
 const ytApiRequest: AxiosInstance = axios.create({
@@ -73,20 +71,24 @@ export const searchOfficial = async (
 
   if (!results.data?.items) throw new Error("results couldn't fetch");
 
-  return results.data.items.map((item: any) => {
+  const items = results.data.items.map((item: any): SearchItem | null => {
+    const parsedTitle = parseTitle(item.snippet.title);
+    if (!parsedTitle) {
+      return null;
+    }
     return {
       id: item.id.videoId,
-      title: item.snippet.title,
+      title: parsedTitle.title,
+      artist: parsedTitle.artist,
       publishedAt: item.snippet.publishedAt,
       thumbnail: `https://i.ytimg.com/vi/${item.id.videoId}/hqdefault.jpg`,
-      channel: item.snippet.channelTitle,
     };
   });
+
+  return items.filter((i: any) => i);
 };
 
-export const searchUnofficial = async (
-  searchQuery: string
-): Promise<SearchItem[]> => {
+export const searchUnofficial = async (searchQuery: string): Promise<any[]> => {
   if (!searchQuery) throw new Error("no search query");
 
   let filters = await ytsr.getFilters(searchQuery);
@@ -98,15 +100,21 @@ export const searchUnofficial = async (
     results = await ytsr(searchQuery, { limit: 50 });
   }
 
-  return results.items.map((item: any) => {
+  const items = results.items.map((item: any): SearchItem | null => {
+    const parsedTitle = parseTitle(item.title);
+    if (!parsedTitle) {
+      return null;
+    }
     return {
       id: item.id,
-      title: item.title,
+      title: parsedTitle.title,
+      artist: parsedTitle.artist,
       publishedAt: item.uploadedAt ? String(parseDate(item.uploadedAt)) : null,
       thumbnail: `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`,
-      channel: item.author.name,
     };
   });
+
+  return items.filter((i: any) => i);
 };
 
 export const getInfoUnofficial = async (id: string): Promise<VideoItem> => {
@@ -164,33 +172,35 @@ export const getMusicListsUnofficial = async (countryCode: string) => {
           return {
             id: i.navigationEndpoint.watchEndpoint.playlistId,
             title: i.title.simpleText,
-            description: i.description.simpleText,
-            videoCount: i.videoCountText.runs[0].text,
-            thumbnail: i.thumbnail.thumbnails.reduce(
-              (prev: number, curr: number) => (prev > curr ? prev : curr)
+            thumbnail: i.thumbnail.thumbnails.reduce((prev: any, curr: any) =>
+              prev.width > curr.width ? prev : curr
             ).url,
           };
         }),
       };
     } else if (firstItem?.gridVideoRenderer) {
+      const items = shelf.content.horizontalListRenderer.items.map(
+        (item: any) => {
+          let i = item.gridVideoRenderer;
+          const parsedTitle = parseTitle(i.title?.simpleText);
+          if (!parsedTitle) {
+            return null;
+          }
+          return {
+            id: i.videoId,
+            title: parsedTitle?.title,
+            artist: parsedTitle?.artist,
+            thumbnail: `https://i.ytimg.com/vi/${i.videoId}/hqdefault.jpg`,
+          };
+        }
+      );
+
       return {
         title: shelf.title.runs[0].text,
         type: "Videos",
         playlistId:
           shelf.title.runs[0].navigationEndpoint.browseEndpoint.browseId,
-        items: shelf.content.horizontalListRenderer.items.map((item: any) => {
-          let i = item.gridVideoRenderer;
-          return {
-            id: i.videoId,
-            title: i.title?.simpleText,
-            thumbnail: `https://i.ytimg.com/vi/${i.videoId}/hqdefault.jpg`,
-            publishedAt: i.publishedTimeText?.simpleText,
-            viewsCount: i.shortViewCountText?.simpleText,
-            duration:
-              i.thumbnailOverlays[0].thumbnailOverlayTimeStatusRenderer.text
-                ?.simpleText,
-          };
-        }),
+        items: items.filter((i: any) => i),
       };
     } else if (firstItem?.gridPlaylistRenderer) {
       return {
@@ -202,7 +212,6 @@ export const getMusicListsUnofficial = async (countryCode: string) => {
             id: i.playlistId,
             title: i.title.runs[0].text,
             thumbnail: `https://i.ytimg.com/vi/${i.navigationEndpoint.watchEndpoint.videoId}/hqdefault.jpg`,
-            videoCount: i.videoCountText.runs[0].text,
           };
         }),
       };
@@ -213,22 +222,27 @@ export const getMusicListsUnofficial = async (countryCode: string) => {
 };
 
 export const getPlaylistUnofficial = async (id: string): Promise<Playlist> => {
-  const plist = await ytpl(id, { limit: Infinity });
+  const plist = await ytpl(id);
+
+  const items = plist.items.map((item): PlaylistItem | null => {
+    const parsedTitle = parseTitle(item.title);
+    if (!parsedTitle) {
+      return null;
+    }
+    return {
+      id: item.id,
+      title: parsedTitle.title,
+      artist: parsedTitle.artist,
+      artwork: item.bestThumbnail.url,
+    };
+  });
+
+  const filteredItems = items.filter((i: any) => i);
+
   return {
-    title: plist.title,
-    videoCount: plist.estimatedItemCount,
+    id: plist.id,
+    name: plist.title,
     thumbnail: plist.bestThumbnail?.url,
-    description: plist.description,
-    items: plist.items.map(
-      (item): PlaylistItem => {
-        return {
-          id: item.id,
-          title: item.title,
-          index: item.index,
-          thumbnail: item.bestThumbnail.url,
-          duration: item.durationSec,
-        };
-      }
-    ),
+    songs: filteredItems,
   };
 };

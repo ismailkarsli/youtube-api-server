@@ -10,7 +10,10 @@ const trends = async (req: Request, res: Response) => {
   }
 
   let musicLists;
-  let cachedMusicLists = cache.get(`trends_${countryCode}`);
+  let cachedMusicLists =
+    process.env.NODE_ENV === "production"
+      ? cache.get(`trends_${countryCode}`)
+      : false;
   if (cachedMusicLists) {
     musicLists = cachedMusicLists;
   } else {

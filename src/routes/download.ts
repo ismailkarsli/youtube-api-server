@@ -6,6 +6,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import { spawn } from "child_process";
 import { cache } from "../index";
+import parseTitle from "../utils/parseTitle";
 
 const download = async (req: Request, res: Response) => {
   const videoId = String(req.query.id);
@@ -29,6 +30,10 @@ const download = async (req: Request, res: Response) => {
   }
 
   const highestAudio = videoInfo.formats.highestAudio;
+  const parsedTitle = parseTitle(videoInfo.title);
+
+  const title = videoInfo.mediaInfo.song || parsedTitle?.title;
+  const artist = videoInfo.mediaInfo.artist || parsedTitle?.artist;
 
   let bitrate = "320000";
   if (highestAudio.audioBitrate) {
@@ -56,23 +61,22 @@ const download = async (req: Request, res: Response) => {
       "-f",
       "mp3",
       "-metadata",
-      `title=${videoInfo.mediaInfo.song || ""}`,
+      `title=${title || ""}`,
       "-metadata",
-      `artist=${videoInfo.mediaInfo.artist || ""}`,
-      "-metadata",
-      `album=${videoInfo.mediaInfo.album || ""}`,
+      `artist=${artist || ""}`,
       "-metadata",
       `description=YouTube ID: ${videoId}`,
       "pipe:1",
     ]);
     const fileWriter = fs.createWriteStream(file);
     ffmpegProc.stdout.pipe(fileWriter);
-    ffmpegProc.on("exit", async (code: number) => {
+
+    ffmpegProc.on("close", async (code: number) => {
       if (code !== 0) {
         res.status(500);
-        console.log(code);
         return res.send("internal error");
       }
+
       const fileStats = fs.statSync(file);
       const r = generateResponse(fileStats.size, req.get("Range"));
       res.writeHead(r.statusCode, r.headers);
@@ -82,10 +86,7 @@ const download = async (req: Request, res: Response) => {
   }
 };
 
-const generateResponse = (
-  fileSize: number | undefined,
-  range: string | undefined
-) => {
+const generateResponse = (fileSize?: number, range?: string) => {
   if (fileSize) {
     if (range) {
       const ranges = range.replace(/bytes=/, "").split("-");
@@ -121,7 +122,9 @@ const generateResponse = (
   } else {
     return {
       statusCode: 200,
-      headers: { "Content-Type": "audio/mpeg" },
+      headers: {
+        "Content-Type": "audio/mpeg",
+      },
     };
   }
 };

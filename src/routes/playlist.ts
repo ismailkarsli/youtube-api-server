@@ -10,7 +10,10 @@ const playlist = async (req: Request, res: Response) => {
   }
 
   let results;
-  let cachedResults = cache.get(`playlist_${playlistId}`);
+  let cachedResults =
+    process.env.NODE_ENV !== "production"
+      ? null
+      : cache.get(`playlist_${playlistId}`);
   if (cachedResults) {
     results = cachedResults;
   } else {
