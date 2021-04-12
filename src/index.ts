@@ -3,6 +3,7 @@ import home from "./routes/home";
 import search from "./routes/search";
 import trends from "./routes/trends";
 import playlist from "./routes/playlist";
+import song from "./routes/song";
 import download from "./routes/download";
 import NodeCache from "node-cache";
 
@@ -16,6 +17,7 @@ app.get("/", home);
 app.get("/trends", trends);
 app.get("/search", search);
 app.get("/playlist", playlist);
+app.get("/song", song);
 app.get("/download", download);
 
 const PORT = process.env.PORT || 3000;
