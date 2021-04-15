@@ -197,7 +197,7 @@ export const getMusicListsUnofficial = async (countryCode: string) => {
 
       return {
         title: shelf.title.runs[0].text,
-        type: "Videos",
+        type: "Songs",
         playlistId:
           shelf.title.runs[0].navigationEndpoint.browseEndpoint.browseId,
         items: items.filter((i: any) => i),
