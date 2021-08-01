@@ -20,7 +20,7 @@
     "node-cache": "^5.1.2",
     "stream-json": "^1.7.1",
     "tmp": "^0.2.1",
-    "ytdl-core": "^4.5.0",
+    "ytdl-core": "^4.9.0",
     "ytpl": "^2.1.0",
     "ytsr": "^3.4.0"
   },

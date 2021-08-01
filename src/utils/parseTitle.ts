@@ -9,10 +9,10 @@ export default (rawTitle: string): ParsedTitle | null => {
     return null;
   }
 
-  let extractedFeatures = extractFeaturings(title);
+  let extractedFeats = extractFeaturings(title);
 
-  let titleWithoutFeats = extractedFeatures.title.trim();
-  let featurings = extractedFeatures.featurings;
+  let titleWithoutFeats = extractedFeats.title.trim();
+  let featurings = extractedFeats.featurings;
 
   let artistTitleSplitted = splitArtistTitle(titleWithoutFeats);
   if (!artistTitleSplitted) {
